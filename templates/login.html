@@ -18,31 +18,93 @@
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
+                <div class="label-row">
+                    <label for="password">Password</label>
+                    <button type="button" class="btn-toggle-pwd" id="pwdToggleBtn" onclick="togglePasswordVisibility()">
+                        👁️ Show
+                    </button>
+                </div>
                 <input type="password" id="password" name="password" required placeholder="••••••••••••">
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">Authenticate Securely</button>
         </form>
 
+        <!-- Evaluator Credentials Display Box with Passwords -->
         <div class="evaluator-box">
             <div class="evaluator-header">
-                <span class="evaluator-tag">Evaluator Quick-Fill</span>
-                <span class="evaluator-note">Click any account to pre-fill credentials:</span>
+                <div class="evaluator-title-row">
+                    <span class="evaluator-tag">🔑 TEST CREDENTIALS</span>
+                    <span class="evaluator-note">Pre-configured accounts with passwords for evaluation:</span>
+                </div>
             </div>
-            <div class="seed-buttons">
-                <button type="button" class="btn-seed" onclick="fillCreds('admin', 'Admin@TrustVault2026!')">
-                    <span class="seed-role">ADMIN</span>
-                    <span class="seed-user">admin</span>
-                </button>
-                <button type="button" class="btn-seed" onclick="fillCreds('alice_owner', 'Alice@TrustVault2026!')">
-                    <span class="seed-role">OWNER</span>
-                    <span class="seed-user">alice_owner</span>
-                </button>
-                <button type="button" class="btn-seed" onclick="fillCreds('carol_viewer', 'Carol@TrustVault2026!')">
-                    <span class="seed-role">VIEWER</span>
-                    <span class="seed-user">carol_viewer</span>
-                </button>
+
+            <div class="creds-table-wrapper">
+                <table class="creds-table">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Username</th>
+                            <th>Password</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="user-role role-admin">ADMIN</span></td>
+                            <td class="font-mono">admin</td>
+                            <td class="font-mono pwd-cell"><code>Admin@TrustVault2026!</code></td>
+                            <td>
+                                <button type="button" class="btn-fill-cred" onclick="fillCreds('admin', 'Admin@TrustVault2026!')">
+                                    Auto-Fill
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="user-role role-owner">OWNER</span></td>
+                            <td class="font-mono">alice_owner</td>
+                            <td class="font-mono pwd-cell"><code>Alice@TrustVault2026!</code></td>
+                            <td>
+                                <button type="button" class="btn-fill-cred" onclick="fillCreds('alice_owner', 'Alice@TrustVault2026!')">
+                                    Auto-Fill
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="user-role role-owner">OWNER</span></td>
+                            <td class="font-mono">bob_owner</td>
+                            <td class="font-mono pwd-cell"><code>Bob@TrustVault2026!</code></td>
+                            <td>
+                                <button type="button" class="btn-fill-cred" onclick="fillCreds('bob_owner', 'Bob@TrustVault2026!')">
+                                    Auto-Fill
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="user-role role-viewer">VIEWER</span></td>
+                            <td class="font-mono">carol_viewer</td>
+                            <td class="font-mono pwd-cell"><code>Carol@TrustVault2026!</code></td>
+                            <td>
+                                <button type="button" class="btn-fill-cred" onclick="fillCreds('carol_viewer', 'Carol@TrustVault2026!')">
+                                    Auto-Fill
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="user-role role-viewer">VIEWER</span></td>
+                            <td class="font-mono">dave_external</td>
+                            <td class="font-mono pwd-cell"><code>Dave@TrustVault2026!</code></td>
+                            <td>
+                                <button type="button" class="btn-fill-cred" onclick="fillCreds('dave_external', 'Dave@TrustVault2026!')">
+                                    Auto-Fill
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="creds-help-text">
+                💡 <em>Tip: Click <strong>Auto-Fill</strong> on any row to instantly populate the form above.</em>
             </div>
         </div>
     </div>
@@ -51,8 +113,27 @@
 <script>
 function fillCreds(username, password) {
     document.getElementById('identifier').value = username;
-    document.getElementById('password').value = password;
+    const pwdInput = document.getElementById('password');
+    pwdInput.value = password;
+    // Highlight briefly to give visual feedback
+    document.getElementById('identifier').style.borderColor = '#2563eb';
+    pwdInput.style.borderColor = '#2563eb';
+    setTimeout(() => {
+        document.getElementById('identifier').style.borderColor = '';
+        pwdInput.style.borderColor = '';
+    }, 800);
+}
+
+function togglePasswordVisibility() {
+    const pwdInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('pwdToggleBtn');
+    if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        toggleBtn.innerHTML = '🔒 Hide';
+    } else {
+        pwdInput.type = 'password';
+        toggleBtn.innerHTML = '👁️ Show';
+    }
 }
 </script>
 {% endblock %}
-

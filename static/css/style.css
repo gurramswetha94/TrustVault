@@ -569,7 +569,7 @@ body {
 
 /* Auth Cards */
 .auth-wrapper {
-    max-width: 440px;
+    max-width: 580px;
     margin: 2rem auto;
 }
 
@@ -590,6 +590,32 @@ body {
 .auth-header h2 { font-size: 1.4rem; font-weight: 700; }
 .auth-header p { font-size: 0.85rem; color: var(--text-muted); }
 
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.label-row label {
+    margin-bottom: 0;
+}
+
+.btn-toggle-pwd {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+}
+
+.btn-toggle-pwd:hover {
+    background: var(--primary-light);
+}
+
 .evaluator-box {
     margin-top: 2rem;
     padding-top: 1.25rem;
@@ -597,52 +623,98 @@ body {
 }
 
 .evaluator-header {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.evaluator-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .evaluator-tag {
     background: #fef3c7;
     color: #b45309;
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    padding: 0.15rem 0.4rem;
+    padding: 0.2rem 0.5rem;
     border-radius: 4px;
     text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .evaluator-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.creds-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 0.6rem;
+}
+
+.creds-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.creds-table th {
+    background: #f8fafc;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.creds-table td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+}
+
+.creds-table tr:last-child td {
+    border-bottom: none;
+}
+
+.pwd-cell code {
+    background: #f1f5f9;
+    padding: 0.2rem 0.45rem;
+    border-radius: 4px;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-fill-cred {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid #bfdbfe;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.55rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-fill-cred:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.creds-help-text {
     font-size: 0.75rem;
     color: var(--text-muted);
-    margin-left: 0.4rem;
+    text-align: center;
 }
-
-.seed-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.btn-seed {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    background: #f8fafc;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.15s ease;
-}
-
-.btn-seed:hover {
-    background: #f1f5f9;
-}
-
-.seed-role {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #475569;
 }
 
 .seed-user {
