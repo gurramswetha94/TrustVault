@@ -215,3 +215,4 @@ def delete_document_record(user, doc_id):
         reason=f"Permanently deleted document '{doc_title}'"
     )
     return True, f"Document '{doc_title}' deleted successfully"
+

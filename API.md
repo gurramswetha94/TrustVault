@@ -53,3 +53,4 @@
 |---|---|---|---|---|
 | `/admin` | `GET` | Authenticated | `admin` only | Comprehensive audit console showing complete activity stream, security anomaly flags (403 refused probes), and ledger integrity verification. Viewers and Owners receive `403`. |
 | `/admin/verify-integrity` | `GET` | Authenticated | `admin` only | On-demand cryptographic verification of the SHA-256 audit hash chain. Returns `SECURE` (100% intact) or `COMPROMISED`. |
+

@@ -74,3 +74,4 @@ def search():
         date_to=date_to,
         total_count=len(results)
     )
+

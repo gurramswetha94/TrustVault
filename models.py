@@ -159,3 +159,4 @@ class AuditLog(db.Model):
             'previous_hash': self.previous_hash,
             'record_hash': self.record_hash
         }
+

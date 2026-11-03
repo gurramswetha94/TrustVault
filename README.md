@@ -129,3 +129,4 @@ AI was utilized to accelerate boilerplate scaffolding, but was **strictly monito
 - [x] **Automated Tests:** 13 unit & integration tests covering cross-user isolation and tear-down.
 - [x] **[API.md](file:///C:/Users/Swetha/Trustvault/API.md):** Complete endpoint role & permission specifications.
 - [x] **Executive PDF Guide:** [TrustVault_Executive_Guide.pdf](file:///C:/Users/Swetha/Trustvault/TrustVault_Executive_Guide.pdf) in root directory.
+

@@ -46,3 +46,4 @@ def current_user_api():
         'authenticated': True,
         'user': user.to_dict()
     })
+

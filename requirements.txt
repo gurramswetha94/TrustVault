@@ -6,3 +6,4 @@ gunicorn==26.2.0
 psycopg-binary==3.3.6
 pypdf==6.14.2
 pytest>=8.0.0
+

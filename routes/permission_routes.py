@@ -61,3 +61,4 @@ def search_users():
     ).limit(10).all()
     
     return jsonify([{'id': u.id, 'username': u.username, 'role': u.role} for u in users])
+

@@ -41,3 +41,4 @@ class Config:
         'docx': [b'PK\x03\x04'],
         'xlsx': [b'PK\x03\x04'],
     }
+

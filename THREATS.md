@@ -121,3 +121,4 @@ Every asset (binary file payload, document metadata, audit record, permission gr
 3. **Public Sharing Links (Anonymous URLs):**  
    *Decision:* Prohibited by design.  
    *Reasoning:* A link that works without authentication cannot prove who downloaded the file afterwards, violating Non-Negotiable Rule #2.
+

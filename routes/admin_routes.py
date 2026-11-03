@@ -75,3 +75,4 @@ def verify_integrity_api():
         'compromised_records': compromised,
         'status': 'SECURE' if is_valid else 'COMPROMISED'
     })
+

@@ -112,3 +112,4 @@
   **HTTP Status Masking / Weak API Semantics.** When an unauthorized viewer attempted to delete an owner's document, the endpoint returned `HTTP 302 Found` (redirect) instead of `HTTP 403 Forbidden`. Automated security scanning tools, API clients, and integration tests looking for standard authorization rejection codes would observe a redirect rather than an explicit access denial.
 - **What I Did Instead:**  
   Updated the route to explicitly call `abort(403, description=message)` on any authorization failure. Added test case `test_read_grantee_cannot_delete_document` in `tests/test_permissions.py` asserting `response.status_code == 403`.
+
