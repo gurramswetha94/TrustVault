@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Vault Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Top Action Bar -->
+    <div class="dashboard-header">
+        <div class="header-titles">
+            <h1>Document Vault</h1>
+            <p>Access-controlled document repository with real-time audit tracking.</p>
+        </div>
+        <div class="header-actions">
+            {% if current_user.is_owner() %}
+            <button class="btn btn-primary" onclick="toggleModal('upload-modal')">
+                <span class="btn-icon">+</span> Upload Document
+            </button>
+            {% else %}
+            <div class="viewer-notice">
+                <span class="badge-viewer">Viewer Mode</span> (Read-only access to granted files)
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Category Filters -->
+    <div class="category-filters">
+        <a href="{{ url_for('documents.dashboard') }}" class="filter-pill {% if not current_category %}active{% endif %}">
+            All Documents ({{ all_docs|length }})
+        </a>
+        {% for cat in categories %}
+        <a href="{{ url_for('documents.dashboard', category=cat) }}" class="filter-pill {% if current_category == cat %}active{% endif %}">
+            {{ cat }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Section 1: Documents Owned by User -->
+    <div class="vault-section">
+        <div class="section-heading">
+            <h2>Your Documents ({{ owned_docs|length }})</h2>
+            <span class="section-sub">Documents you created, manage, and can delegate or revoke access to.</span>
+        </div>
+
+        {% if owned_docs %}
+        <div class="doc-grid">
+            {% for doc in owned_docs %}
+            <div class="doc-card">
+                <div class="doc-card-header">
+                    <span class="doc-category-badge">{{ doc.category }}</span>
+                    <span class="doc-date">{{ doc.created_at.strftime('%b %d, %Y') }}</span>
+                </div>
+                <div class="doc-card-body">
+                    <h3 class="doc-title">
+                        <a href="{{ url_for('documents.detail', doc_id=doc.id) }}">{{ doc.title }}</a>
+                    </h3>
+                    <p class="doc-desc">{{ doc.description or "No description provided." }}</p>
+                    <div class="doc-meta-tags">
+                        <span class="meta-tag">📄 {{ doc.original_filename }}</span>
+                        <span class="meta-tag">💾 {{ (doc.file_size / 1024)|round(1) }} KB</span>
+                    </div>
+                </div>
+                <div class="doc-card-footer">
+                    <a href="{{ url_for('documents.download', doc_id=doc.id) }}" class="btn-action btn-download" title="Download Document">
+                        ⬇️ Download
+                    </a>
+                    <a href="{{ url_for('documents.detail', doc_id=doc.id) }}" class="btn-action btn-manage" title="Manage Permissions">
+                        ⚙️ Access &amp; Audit
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="empty-icon">📁</span>
+            <p>You haven't uploaded any documents yet.</p>
+            {% if current_user.is_owner() %}
+            <button class="btn btn-outline" onclick="toggleModal('upload-modal')">Upload Your First File</button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Section 2: Documents Shared With User -->
+    <div class="vault-section">
+        <div class="section-heading">
+            <h2>Shared With You ({{ shared_docs|length }})</h2>
+            <span class="section-sub">Confidential files explicitly granted to your account by document owners.</span>
+        </div>
+
+        {% if shared_docs %}
+        <div class="doc-grid">
+            {% for doc in shared_docs %}
+            <div class="doc-card doc-card-shared">
+                <div class="doc-card-header">
+                    <span class="doc-category-badge">{{ doc.category }}</span>
+                    <span class="shared-by-badge">Owner: {{ doc.owner.username }}</span>
+                </div>
+                <div class="doc-card-body">
+                    <h3 class="doc-title">
+                        <a href="{{ url_for('documents.detail', doc_id=doc.id) }}">{{ doc.title }}</a>
+                    </h3>
+                    <p class="doc-desc">{{ doc.description or "No description provided." }}</p>
+                    <div class="doc-meta-tags">
+                        <span class="meta-tag">📄 {{ doc.original_filename }}</span>
+                        <span class="meta-tag">💾 {{ (doc.file_size / 1024)|round(1) }} KB</span>
+                    </div>
+                </div>
+                <div class="doc-card-footer">
+                    <a href="{{ url_for('documents.download', doc_id=doc.id) }}" class="btn-action btn-download">
+                        ⬇️ Download
+                    </a>
+                    <a href="{{ url_for('documents.detail', doc_id=doc.id) }}" class="btn-action btn-view">
+                        👁️ View Details
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="empty-icon">🔒</span>
+            <p>No external documents are currently shared with your account.</p>
+            <span class="empty-hint">When an owner grants you access, documents will appear here immediately.</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Upload Modal (for Owners & Admins) -->
+<div id="upload-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Upload Confidential Document</h3>
+            <button class="modal-close" onclick="toggleModal('upload-modal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('documents.upload') }}" enctype="multipart/form-data" class="modal-form">
+            <div class="form-group">
+                <label for="title">Document Title *</label>
+                <input type="text" id="title" name="title" required placeholder="e.g. FY2026 Executive Compensation Review">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="category">Classification Category *</label>
+                    <select id="category" name="category" required>
+                        <option value="Financials">Financials</option>
+                        <option value="Contracts">Contracts</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Audit">Audit Papers</option>
+                        <option value="HR">HR / Personnel</option>
+                        <option value="Legal">Legal</option>
+                        <option value="General" selected>General</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="document_file">File Payload (Max 25MB) *</label>
+                    <input type="file" id="document_file" name="document_file" required accept=".pdf,.docx,.xlsx,.txt,.png,.jpg,.jpeg,.csv">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Security Notes / Description</label>
+                <textarea id="description" name="description" rows="3" placeholder="Context, handling restrictions, and confidentiality requirements..."></textarea>
+            </div>
+
+            <div class="validation-note">
+                <small>🔒 <strong>Security Guarantee:</strong> File headers (magic bytes) are checked upon upload. Files are stored with UUID identifiers outside the web root. An SHA-256 fingerprint is recorded in the immutable audit ledger.</small>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="toggleModal('upload-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Encrypt &amp; Store in Vault</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.style.display = (modal.style.display === 'none' || modal.style.display === '') ? 'flex' : 'none';
+}
+</script>
+{% endblock %}

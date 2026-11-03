@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Administrator Audit &amp; Governance Console - TrustVault{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard-container">
+    <div class="admin-header">
+        <div>
+            <h1>Administrative Oversight &amp; Audit Console</h1>
+            <p>System-wide activity ledger, access delegation monitoring, and cryptographic proof of non-repudiation.</p>
+        </div>
+        <div class="admin-badge">
+            <span class="badge-role-admin">ADMINISTRATOR LEVEL</span>
+        </div>
+    </div>
+
+    <!-- Cryptographic Ledger Integrity Status Banner -->
+    <div class="integrity-banner {% if is_ledger_intact %}integrity-valid{% else %}integrity-invalid{% endif %}">
+        <div class="integrity-icon">
+            {% if is_ledger_intact %}🛡️{% else %}🚨{% endif %}
+        </div>
+        <div class="integrity-info">
+            {% if is_ledger_intact %}
+            <h3>LEDGER INTEGRITY VERIFIED: 100% Intact</h3>
+            <p>Cryptographic hash chaining confirms no audit log records have been altered, injected, or deleted out-of-band.</p>
+            {% else %}
+            <h3>SECURITY ALERT: AUDIT LEDGER INTEGRITY COMPROMISED!</h3>
+            <p>Detected {{ compromised_records|length }} record(s) where cryptographic hashes failed verification. Possible direct database tampering!</p>
+            {% endif %}
+        </div>
+        <div class="integrity-action">
+            <button class="btn btn-outline-light" onclick="window.location.reload();">Re-Verify Ledger</button>
+        </div>
+    </div>
+
+    <!-- System Metrics Row -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-num">{{ total_logs }}</span>
+            <span class="stat-label">Total Audit Events</span>
+        </div>
+        <div class="stat-card stat-card-danger">
+            <span class="stat-num">{{ denied_attempts_count }}</span>
+            <span class="stat-label">Refused Security Probes (403)</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-num">{{ total_documents }}</span>
+            <span class="stat-label">Vault Documents</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-num">{{ total_users }}</span>
+            <span class="stat-label">Registered Users</span>
+        </div>
+    </div>
+
+    <!-- Security Incidents & Refused Probes Table -->
+    {% if recent_security_alerts %}
+    <div class="section-box alert-box-wrapper">
+        <div class="section-header-row">
+            <div>
+                <h2>⚠️ Security Anomaly Monitor: Refused Access Probes</h2>
+                <p>The following attempts were intercepted and denied by the server-side authorization engine:</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp (UTC)</th>
+                        <th>User</th>
+                        <th>Target Document</th>
+                        <th>Action</th>
+                        <th>Interception Reason</th>
+                        <th>Client IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alert in recent_security_alerts %}
+                    <tr class="threat-row">
+                        <td class="font-mono text-sm">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td><strong>{{ alert.username }}</strong></td>
+                        <td>{{ alert.document_title or ("Doc #" ~ alert.document_id if alert.document_id else "N/A") }}</td>
+                        <td><span class="badge-action">{{ alert.action }}</span></td>
+                        <td class="text-danger font-medium">{{ alert.reason }}</td>
+                        <td class="font-mono text-sm">{{ alert.ip_address or "Internal" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Master Audit Ledger Section -->
+    <div class="section-box">
+        <div class="section-header-row">
+            <div>
+                <h2>Master Audit Ledger (Complete History)</h2>
+                <p>Immutable log of uploads, downloads, edits, permission grants, and revocations.</p>
+            </div>
+        </div>
+
+        <!-- Filters Form -->
+        <form method="GET" action="{{ url_for('admin.dashboard') }}" class="admin-filter-bar">
+            <div class="form-group">
+                <input type="text" name="username" value="{{ username_filter }}" placeholder="Filter by username...">
+            </div>
+            <div class="form-group">
+                <select name="action">
+                    <option value="">All Actions</option>
+                    <option value="UPLOAD" {% if action_filter == 'UPLOAD' %}selected{% endif %}>UPLOAD</option>
+                    <option value="DOWNLOAD" {% if action_filter == 'DOWNLOAD' %}selected{% endif %}>DOWNLOAD</option>
+                    <option value="GRANT_PERMISSION" {% if action_filter == 'GRANT_PERMISSION' %}selected{% endif %}>GRANT_PERMISSION</option>
+                    <option value="REVOKE_PERMISSION" {% if action_filter == 'REVOKE_PERMISSION' %}selected{% endif %}>REVOKE_PERMISSION</option>
+                    <option value="DELETE" {% if action_filter == 'DELETE' %}selected{% endif %}>DELETE</option>
+                    <option value="LOGIN" {% if action_filter == 'LOGIN' %}selected{% endif %}>LOGIN</option>
+                    <option value="LOGOUT" {% if action_filter == 'LOGOUT' %}selected{% endif %}>LOGOUT</option>
+                    <option value="SUSPICIOUS_PROBE" {% if action_filter == 'SUSPICIOUS_PROBE' %}selected{% endif %}>SUSPICIOUS_PROBE</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <select name="status">
+                    <option value="">All Statuses</option>
+                    <option value="ALLOWED" {% if status_filter == 'ALLOWED' %}selected{% endif %}>ALLOWED (Success)</option>
+                    <option value="DENIED" {% if status_filter == 'DENIED' %}selected{% endif %}>DENIED (Blocked)</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Filter Ledger</button>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Reset</a>
+        </form>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Timestamp (UTC)</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Document</th>
+                        <th>Status</th>
+                        <th>Context / Reason</th>
+                        <th>SHA-256 Hash Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="audit-row-{{ log.status|lower }}">
+                        <td class="font-mono">{{ log.id }}</td>
+                        <td class="font-mono text-sm">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td><strong>{{ log.username }}</strong></td>
+                        <td><span class="badge-action">{{ log.action }}</span></td>
+                        <td>{{ log.document_title or ("#" ~ log.document_id if log.document_id else "—") }}</td>
+                        <td>
+                            <span class="badge-status status-{{ log.status|lower }}">
+                                {{ log.status }}
+                            </span>
+                        </td>
+                        <td class="text-sm">{{ log.reason or "—" }}</td>
+                        <td class="font-mono text-xs" title="Previous: {{ log.previous_hash }}&#10;Current: {{ log.record_hash }}">
+                            <code>{{ log.record_hash[:12] }}...</code>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if not logs %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">No audit log records match filter criteria.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

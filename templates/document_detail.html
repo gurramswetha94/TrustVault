@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}{{ doc.title }} - TrustVault{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Back Navigation -->
+    <div class="breadcrumb">
+        <a href="{{ url_for('documents.dashboard') }}">&larr; Back to Document Vault</a>
+    </div>
+
+    <!-- Main Document Header Card -->
+    <div class="detail-card">
+        <div class="detail-header">
+            <div>
+                <span class="doc-category-badge">{{ doc.category }}</span>
+                <h1 class="detail-title">{{ doc.title }}</h1>
+                <p class="detail-desc">{{ doc.description or "No description provided." }}</p>
+            </div>
+            <div class="detail-actions">
+                <a href="{{ url_for('documents.download', doc_id=doc.id) }}" class="btn btn-primary btn-lg">
+                    ⬇️ Download File Payload
+                </a>
+            </div>
+        </div>
+
+        <div class="metadata-grid">
+            <div class="meta-item">
+                <span class="meta-label">Original Filename</span>
+                <span class="meta-val font-mono">{{ doc.original_filename }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Document Owner</span>
+                <span class="meta-val">👤 {{ doc.owner.username }} ({{ doc.owner.email }})</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Upload Timestamp</span>
+                <span class="meta-val">{{ doc.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">File Size</span>
+                <span class="meta-val">{{ (doc.file_size / 1024)|round(1) }} KB ({{ doc.file_size }} bytes)</span>
+            </div>
+            <div class="meta-item meta-item-full">
+                <span class="meta-label">Cryptographic Fingerprint (SHA-256)</span>
+                <span class="meta-val font-mono checksum-val">{{ doc.sha256_checksum }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if can_manage %}
+    <!-- Section: Access Control & Permissions Management (Owner / Admin Only) -->
+    <div class="section-box">
+        <div class="section-header-row">
+            <div>
+                <h2>Access Control &amp; Named Grants</h2>
+                <p>Only users listed below can reach this document. Revocation takes effect immediately.</p>
+            </div>
+        </div>
+
+        <!-- Grant Access Form -->
+        <div class="grant-form-card">
+            <h4>Grant Access to a Named User</h4>
+            <form method="POST" action="{{ url_for('permissions.grant', doc_id=doc.id) }}" class="grant-inline-form">
+                <div class="form-group flex-2">
+                    <input type="text" name="username" required placeholder="Enter username (e.g. carol_viewer, dave_external)">
+                </div>
+                <div class="form-group flex-1">
+                    <select name="permission">
+                        <option value="read" selected>Read Only (Download)</option>
+                        <option value="edit">Edit (Metadata &amp; Upload)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Grant Access</button>
+            </form>
+        </div>
+
+        <!-- Active Grants Table -->
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Authorized User</th>
+                        <th>User Role</th>
+                        <th>Permission Level</th>
+                        <th>Granted By</th>
+                        <th>Granted At</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Owner row -->
+                    <tr class="owner-row">
+                        <td><strong>{{ doc.owner.username }}</strong></td>
+                        <td><span class="user-role role-{{ doc.owner.role }}">{{ doc.owner.role|upper }}</span></td>
+                        <td><span class="badge badge-owner">OWNER (Full Control)</span></td>
+                        <td>System (Creator)</td>
+                        <td>{{ doc.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td><span class="text-muted">Immutable</span></td>
+                    </tr>
+
+                    {% for p in permissions %}
+                    <tr>
+                        <td><strong>{{ p.user.username }}</strong></td>
+                        <td><span class="user-role role-{{ p.user.role }}">{{ p.user.role|upper }}</span></td>
+                        <td>
+                            <span class="badge badge-perm-{{ p.permission }}">{{ p.permission|upper }}</span>
+                        </td>
+                        <td>{{ p.granter.username if p.granter else 'System' }}</td>
+                        <td>{{ p.granted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('permissions.revoke', doc_id=doc.id, user_id=p.user_id) }}" onsubmit="return confirm('Immediately revoke access from {{ p.user.username }}?');">
+                                <button type="submit" class="btn-revoke">Revoke Access</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if not permissions %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No external users have been granted access. This document is private to {{ doc.owner.username }}.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section: Document Audit History -->
+    <div class="section-box">
+        <div class="section-header-row">
+            <div>
+                <h2>Document Audit Trail (Provable Record)</h2>
+                <p>Every access attempt (including refused unauthorized probes) is recorded in this tamper-evident ledger.</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp (UTC)</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Status</th>
+                        <th>Reason / Security Context</th>
+                        <th>Client IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_history %}
+                    <tr class="audit-row-{{ log.status|lower }}">
+                        <td class="font-mono text-sm">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td><strong>{{ log.username }}</strong></td>
+                        <td><span class="badge-action">{{ log.action }}</span></td>
+                        <td>
+                            <span class="badge-status status-{{ log.status|lower }}">
+                                {{ log.status }}
+                            </span>
+                        </td>
+                        <td class="text-sm">{{ log.reason or "Standard operation" }}</td>
+                        <td class="font-mono text-sm">{{ log.ip_address or "Internal" }}</td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if not audit_history %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No audit history recorded yet.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Document Deletion Area -->
+    <div class="danger-zone">
+        <h4>Danger Zone</h4>
+        <p>Permanently destroy this document and remove its encrypted binary payload from vault storage.</p>
+        <form method="POST" action="{{ url_for('documents.delete', doc_id=doc.id) }}" onsubmit="return confirm('Are you sure? This will permanently delete {{ doc.title }} and its physical storage payload.');">
+            <button type="submit" class="btn btn-danger">Permanently Delete Document</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

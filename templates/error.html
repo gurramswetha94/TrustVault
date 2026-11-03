@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ error_code }} - TrustVault{% endblock %}
+
+{% block content %}
+<div class="error-wrapper">
+    <div class="error-card">
+        <div class="error-badge">{{ error_code }}</div>
+        <h2>{{ error_title }}</h2>
+        <p class="error-desc">{{ error_description }}</p>
+        
+        {% if error_code == 403 %}
+        <div class="security-incident-alert">
+            <span class="incident-icon">🛡️</span>
+            <div>
+                <strong>Security Notice:</strong>
+                <span>This unauthorized access attempt has been logged in the TrustVault immutable audit ledger with your user identity, IP address, and timestamp.</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="error-actions">
+            <a href="{{ url_for('documents.dashboard') }}" class="btn btn-primary">Return to Document Vault</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">Switch Account</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

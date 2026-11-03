@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TrustVault{% endblock %} | Provable Document Security</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Modern Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <a href="{{ url_for('documents.dashboard') }}" class="logo-link">
+                    <span class="logo-icon">🛡️</span>
+                    <span class="logo-text">Trust<strong>Vault</strong></span>
+                </a>
+                <span class="security-badge" title="Cryptographically chained audit trail active">Tamper-Evident Ledger</span>
+            </div>
+
+            {% if current_user %}
+            <nav class="nav-links">
+                <a href="{{ url_for('documents.dashboard') }}" class="nav-item">Documents</a>
+                <a href="{{ url_for('search.search') }}" class="nav-item">Search</a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-item admin-nav-item">Admin Audit Console</a>
+                {% endif %}
+            </nav>
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name">{{ current_user.username }}</span>
+                    <span class="user-role role-{{ current_user.role }}">{{ current_user.role|upper }}</span>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="btn-logout" title="Sign out securely">Sign out</a>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="flash-alert alert-{{ category }}">
+                        <span class="flash-icon">
+                            {% if category == 'success' %}✓{% elif category == 'danger' %}⚠️{% else %}ℹ️{% endif %}
+                        </span>
+                        <span class="flash-text">{{ message }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="app-footer">
+        <div class="footer-container">
+            <p><strong>TrustVault</strong> &mdash; Zero Trust Authorization &amp; Cryptographically Provable Audit Trails.</p>
+            <p class="footer-meta">Evaluation Ready &bull; Server-Side Enforced &bull; Instant Access Revocation</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Search Vault - TrustVault{% endblock %}
+
+{% block content %}
+<div class="search-page-container">
+    <div class="search-header">
+        <h1>Search Document Vault</h1>
+        <p>Query documents by keyword, owner, classification category, and creation date.</p>
+    </div>
+
+    <!-- Multi-Parameter Search Form -->
+    <div class="search-card">
+        <form method="GET" action="{{ url_for('search.search') }}" class="search-form-grid">
+            <div class="form-group">
+                <label for="q">Keyword / Title / Filename</label>
+                <input type="text" id="q" name="q" value="{{ query_text }}" placeholder="e.g. Salary, MSA, Patent...">
+            </div>
+
+            <div class="form-group">
+                <label for="owner">Document Owner</label>
+                <input type="text" id="owner" name="owner" value="{{ owner_query }}" placeholder="e.g. alice_owner">
+            </div>
+
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="">All Categories</option>
+                    <option value="Financials" {% if category_filter == 'Financials' %}selected{% endif %}>Financials</option>
+                    <option value="Contracts" {% if category_filter == 'Contracts' %}selected{% endif %}>Contracts</option>
+                    <option value="Engineering" {% if category_filter == 'Engineering' %}selected{% endif %}>Engineering</option>
+                    <option value="Audit" {% if category_filter == 'Audit' %}selected{% endif %}>Audit Papers</option>
+                    <option value="HR" {% if category_filter == 'HR' %}selected{% endif %}>HR / Personnel</option>
+                    <option value="Legal" {% if category_filter == 'Legal' %}selected{% endif %}>Legal</option>
+                    <option value="General" {% if category_filter == 'General' %}selected{% endif %}>General</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="date_from">Date From</label>
+                <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+            </div>
+
+            <div class="form-group">
+                <label for="date_to">Date To</label>
+                <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+            </div>
+
+            <div class="form-group form-group-btn">
+                <button type="submit" class="btn btn-primary btn-block">Filter Vault</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Search Results -->
+    <div class="search-results-section">
+        <div class="results-meta">
+            <h3>Matching Documents ({{ total_count }})</h3>
+            <span class="security-note">🔒 Zero Metadata Leakage: Results contain exclusively documents you have authorized rights to view.</span>
+        </div>
+
+        {% if results %}
+        <div class="doc-grid">
+            {% for doc in results %}
+            <div class="doc-card">
+                <div class="doc-card-header">
+                    <span class="doc-category-badge">{{ doc.category }}</span>
+                    <span class="doc-date">{{ doc.created_at.strftime('%b %d, %Y') }}</span>
+                </div>
+                <div class="doc-card-body">
+                    <h3 class="doc-title">
+                        <a href="{{ url_for('documents.detail', doc_id=doc.id) }}">{{ doc.title }}</a>
+                    </h3>
+                    <p class="doc-desc">{{ doc.description or "No description provided." }}</p>
+                    <div class="doc-meta-tags">
+                        <span class="meta-tag">👤 Owner: {{ doc.owner.username }}</span>
+                        <span class="meta-tag">📄 {{ doc.original_filename }}</span>
+                        <span class="meta-tag">💾 {{ (doc.file_size / 1024)|round(1) }} KB</span>
+                    </div>
+                </div>
+                <div class="doc-card-footer">
+                    <a href="{{ url_for('documents.download', doc_id=doc.id) }}" class="btn-action btn-download">
+                        ⬇️ Download
+                    </a>
+                    <a href="{{ url_for('documents.detail', doc_id=doc.id) }}" class="btn-action btn-view">
+                        👁️ View Details
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="empty-icon">🔍</span>
+            <p>No accessible documents match your search criteria.</p>
+            <span class="empty-hint">Try broadening your search terms or clearing filters.</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
