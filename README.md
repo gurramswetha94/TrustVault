@@ -107,26 +107,6 @@ AI was utilized to accelerate boilerplate scaffolding, but was **strictly monito
 
 ---
 
-## 6. Cloud Deployment Instructions
 
-### Deploy to Render or Railway:
-1. Fork or push this repository to GitHub.
-2. Create a new **Web Service** on [Render](https://render.com) or [Railway](https://railway.app).
-3. Set Build Command: `pip install -r requirements.txt`
-4. Set Start Command: `python seed_data.py && gunicorn app:app`
-5. Add Environment Variables:
-   - `SECRET_KEY`: Set to a cryptographically secure random string.
-   - `DATABASE_URL`: (Optional) Connect to managed PostgreSQL, or defaults to SQLite.
 
----
-
-## 7. Hand-in Deliverables Checklist
-
-- [x] **Public Git Repository:** History across the development.
-- [x] **Seed Data & Credentials:** Documented in README and login screen.
-- [x] **[THREATS.md](file:///C:/Users/Swetha/Trustvault/THREATS.md):** 8 detailed threat analyses, mitigations, tests, and accepted trade-offs.
-- [x] **[PROMPTS.md](file:///C:/Users/Swetha/Trustvault/PROMPTS.md):** 5 dated entries catching AI security mistakes (2+ on auth/audit).
-- [x] **Automated Tests:** 13 unit & integration tests covering cross-user isolation and tear-down.
-- [x] **[API.md](file:///C:/Users/Swetha/Trustvault/API.md):** Complete endpoint role & permission specifications.
-- [x] **Executive PDF Guide:** [TrustVault_Executive_Guide.pdf](file:///C:/Users/Swetha/Trustvault/TrustVault_Executive_Guide.pdf) in root directory.
 
