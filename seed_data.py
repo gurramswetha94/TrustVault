@@ -2,13 +2,13 @@
 TrustVault Database Seeder
 Populates the database with realistic test users for each role, sample confidential documents,
 explicit permission grants, and initial cryptographic audit ledger entries.
+Supports self-healing auto-seeding for cloud deployments.
 """
 
 import os
 import uuid
 import hashlib
 from datetime import datetime, timezone
-from app import create_app
 from models import db, User, Document, DocumentPermission, AuditLog
 from services.audit_service import log_event
 
@@ -29,47 +29,64 @@ def create_sample_pdf_content(title, confidential_text):
     )
     return pdf_template
 
-def seed():
-    app = create_app()
-    with app.app_context():
+
+def seed_database(app=None, drop_existing=False):
+    """
+    Core seeder logic. Can run standalone or be invoked dynamically on deployment startup.
+    Ensures users, permissions, and files exist with known credentials.
+    """
+    from flask import current_app
+    app_ctx = app or current_app
+    
+    if drop_existing:
         print("Clearing and rebuilding TrustVault database...")
         db.drop_all()
         db.create_all()
+    else:
+        db.create_all()
         
-        storage_dir = app.config['VAULT_STORAGE_DIR']
-        os.makedirs(storage_dir, exist_ok=True)
-        
-        # 1. Create Seed Users
-        print("Creating seed accounts for all 3 required roles...")
-        users = [
-            User(username="admin", email="admin@trustvault.internal", role="admin"),
-            User(username="alice_owner", email="alice@trustvault.internal", role="owner"),
-            User(username="bob_owner", email="bob@trustvault.internal", role="owner"),
-            User(username="carol_viewer", email="carol@trustvault.internal", role="viewer"),
-            User(username="dave_external", email="dave@partner.com", role="viewer"),
-        ]
-        
-        # Default passwords for testing
-        passwords = {
-            "admin": "Admin@TrustVault2026!",
-            "alice_owner": "Alice@TrustVault2026!",
-            "bob_owner": "Bob@TrustVault2026!",
-            "carol_viewer": "Carol@TrustVault2026!",
-            "dave_external": "Dave@TrustVault2026!",
-        }
-        
-        for u in users:
-            u.set_password(passwords[u.username])
-            db.session.add(u)
-        db.session.commit()
-        
-        admin = User.query.filter_by(username="admin").first()
-        alice = User.query.filter_by(username="alice_owner").first()
-        bob = User.query.filter_by(username="bob_owner").first()
-        carol = User.query.filter_by(username="carol_viewer").first()
-        dave = User.query.filter_by(username="dave_external").first()
-        
-        # 2. Create Sample Documents with Physical PDF Storage
+    storage_dir = app_ctx.config['VAULT_STORAGE_DIR']
+    os.makedirs(storage_dir, exist_ok=True)
+    
+    passwords = {
+        "admin": "Admin@TrustVault2026!",
+        "alice_owner": "Alice@TrustVault2026!",
+        "bob_owner": "Bob@TrustVault2026!",
+        "carol_viewer": "Carol@TrustVault2026!",
+        "dave_external": "Dave@TrustVault2026!",
+    }
+    
+    user_definitions = [
+        {"username": "admin", "email": "admin@trustvault.internal", "role": "admin"},
+        {"username": "alice_owner", "email": "alice@trustvault.internal", "role": "owner"},
+        {"username": "bob_owner", "email": "bob@trustvault.internal", "role": "owner"},
+        {"username": "carol_viewer", "email": "carol@trustvault.internal", "role": "viewer"},
+        {"username": "dave_external", "email": "dave@partner.com", "role": "viewer"},
+    ]
+    
+    # 1. Create or Update Seed Users
+    print("Ensuring seed accounts exist for all roles...")
+    for udef in user_definitions:
+        user = User.query.filter_by(username=udef["username"]).first()
+        if not user:
+            user = User(username=udef["username"], email=udef["email"], role=udef["role"])
+            user.set_password(passwords[udef["username"]])
+            db.session.add(user)
+        else:
+            # Re-affirm password and active status so credentials always work
+            user.set_password(passwords[udef["username"]])
+            user.is_active = True
+            user.role = udef["role"]
+    db.session.commit()
+    
+    admin = User.query.filter_by(username="admin").first()
+    alice = User.query.filter_by(username="alice_owner").first()
+    bob = User.query.filter_by(username="bob_owner").first()
+    carol = User.query.filter_by(username="carol_viewer").first()
+    dave = User.query.filter_by(username="dave_external").first()
+    
+    # 2. Seed Sample Documents if empty
+    if Document.query.count() == 0 or drop_existing:
         print("Storing sample confidential documents...")
         doc_samples = [
             {
@@ -156,8 +173,6 @@ def seed():
             permission="read",
             granted_by=alice.id
         )
-        # Doc 2 (Bob's Patent doc) -> Completely PRIVATE to Bob! Alice, Carol, Dave have NO ACCESS.
-        
         # Doc 3 (Bob's Audit doc) -> Alice has EDIT access.
         p3 = DocumentPermission(
             document_id=created_docs[3].id,
@@ -184,18 +199,20 @@ def seed():
             ip_address="192.168.1.105"
         )
         
-        print("\n=== TrustVault Seed Complete ===")
-        print("Ready for immediate evaluation with the following accounts:")
-        print("----------------------------------------------------------------------")
-        print("ROLE            | USERNAME       | PASSWORD            | ACCESS SCOPE")
-        print("----------------------------------------------------------------------")
-        print("Administrator   | admin          | Admin@TrustVault2026! | System-wide audit logs & anomaly monitoring")
-        print("Document Owner  | alice_owner    | Alice@TrustVault2026! | Owns Docs #1 & #2; can grant/revoke access")
-        print("Document Owner  | bob_owner      | Bob@TrustVault2026!   | Owns Docs #3 & #4; owns private blueprint")
-        print("Viewer          | carol_viewer   | Carol@TrustVault2026! | Explicit read grant on Doc #1 (Salary)")
-        print("Viewer (Partner)| dave_external  | Dave@TrustVault2026!  | Explicit read grant on Doc #2 (Contract)")
-        print("----------------------------------------------------------------------\n")
+    print("\n=== TrustVault Database Ready ===")
+    print("Seed accounts active and verified:")
+    print("  admin / Admin@TrustVault2026!")
+    print("  alice_owner / Alice@TrustVault2026!")
+    print("  bob_owner / Bob@TrustVault2026!")
+    print("  carol_viewer / Carol@TrustVault2026!")
+    print("  dave_external / Dave@TrustVault2026!\n")
+
+
+def seed():
+    from app import create_app
+    app = create_app()
+    with app.app_context():
+        seed_database(app=app, drop_existing=True)
 
 if __name__ == '__main__':
     seed()
-

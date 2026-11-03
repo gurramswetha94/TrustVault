@@ -104,7 +104,11 @@
                 </table>
             </div>
             <div class="creds-help-text">
-                💡 <em>Tip: Click <strong>Auto-Fill</strong> on any row to instantly populate the form above.</em>
+                <p>💡 <em>Tip: Click <strong>Auto-Fill</strong> on any row to instantly populate the form above.</em></p>
+                <p style="margin-top: 0.35rem; font-size: 0.75rem;">
+                    🔄 Need to restore or initialize test accounts on this deployment? 
+                    <a href="{{ url_for('auth.seed_db_route', force='true') }}" style="color: var(--primary); font-weight: 600; text-decoration: underline;" onclick="return confirm('Restore all default seed accounts and sample documents?');">Click here to Re-Seed Database</a>
+                </p>
             </div>
         </div>
     </div>

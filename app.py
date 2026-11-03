@@ -70,9 +70,20 @@ def create_app(config_class=Config):
                                error_title="Internal Server Error", 
                                error_description="An unexpected server error occurred. This event has been logged."), 500
 
-    # Auto-initialize tables within app context
+    # Reverse proxy support (fixes HTTPS headers and client IPs on Render, Railway, Fly.io, Heroku)
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+    # Auto-initialize tables and ensure seed accounts exist
     with app.app_context():
         db.create_all()
+        try:
+            from models import User
+            if User.query.first() is None:
+                from seed_data import seed_database
+                seed_database(app=app, drop_existing=False)
+        except Exception as e:
+            print(f"[STARTUP] Auto-seeding notice: {e}")
         
     return app
 

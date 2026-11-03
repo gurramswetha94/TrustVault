@@ -31,7 +31,7 @@ def authenticate_user(username_or_email, password):
     """
     identifier = username_or_email.strip()
     user = User.query.filter(
-        (User.username == identifier) | (User.email == identifier)
+        (User.username.ilike(identifier)) | (User.email.ilike(identifier))
     ).first()
     
     if not user or not user.check_password(password):

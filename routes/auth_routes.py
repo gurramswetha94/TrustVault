@@ -10,6 +10,16 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # Auto-healing: Ensure seed accounts exist even on fresh or ephemeral cloud instances
+    from models import User
+    from seed_data import seed_database
+    from flask import current_app
+    if User.query.first() is None:
+        try:
+            seed_database(current_app, drop_existing=False)
+        except Exception as e:
+            print(f"[LOGIN AUTO-SEED] Error: {e}")
+
     if request.method == 'POST':
         identifier = request.form.get('identifier', '')
         password = request.form.get('password', '')
@@ -28,6 +38,23 @@ def login():
         return redirect(url_for('documents.dashboard'))
         
     return render_template('login.html')
+
+
+@auth_bp.route('/seed-db', methods=['GET', 'POST'])
+def seed_db_route():
+    """
+    On-demand database seeder for cloud deployments.
+    Visiting https://<deployed-url>/seed-db immediately provisions or resets seed accounts.
+    """
+    from seed_data import seed_database
+    from flask import current_app
+    force = request.args.get('force') == 'true'
+    try:
+        seed_database(current_app, drop_existing=force)
+        flash("Database successfully seeded with default evaluator credentials! You can now log in.", "success")
+    except Exception as e:
+        flash(f"Seeding error: {str(e)}", "danger")
+    return redirect(url_for('auth.login'))
 
 
 @auth_bp.route('/logout', methods=['GET', 'POST'])
