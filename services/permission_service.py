@@ -2,8 +2,10 @@
 TrustVault Permission Decision Engine
 The single source of truth for authorization.
 Enforces real-time access checks, instant revocation, and permission delegation.
+Supports time-bound (expiring) grants for zero-trust lifecycle management.
 """
 
+from datetime import datetime, timezone, timedelta
 from models import db, Document, DocumentPermission, User
 from services.audit_service import log_event
 
@@ -41,6 +43,11 @@ def check_document_access(user, doc_id, required_permission='read'):
     if not perm_entry:
         return False, f"User '{user.username}' has not been granted access to this document", doc
         
+    # Time-Bound Access Check: Self-revoking expired permissions
+    if perm_entry.is_expired():
+        exp_time = perm_entry.expires_at.strftime('%Y-%m-%d %H:%M:%S UTC') if perm_entry.expires_at else 'N/A'
+        return False, f"Access grant for user '{user.username}' expired on {exp_time} (Self-Revocation)", doc
+        
     # Check permission level hierarchy
     # 'edit' grants both edit and read
     # 'read' grants read only
@@ -56,10 +63,11 @@ def check_document_access(user, doc_id, required_permission='read'):
     return False, "Permission level unrecognized or denied", doc
 
 
-def grant_permission(granter, doc_id, target_username, permission_level):
+def grant_permission(granter, doc_id, target_username, permission_level, duration_hours=None):
     """
     Grants read or edit permission on doc_id to target_username.
     Only the document owner (or admin) can grant permissions.
+    Supports optional duration_hours (e.g. 1, 24, 168, 720) for auto-expiring access.
     """
     can_manage, reason, doc = check_document_access(granter, doc_id, required_permission='manage')
     if not can_manage:
@@ -83,30 +91,43 @@ def grant_permission(granter, doc_id, target_username, permission_level):
     if target_user.id == doc.owner_id:
         return False, "Target user is already the document owner"
         
+    # Calculate expiration timestamp if duration is specified
+    expires_at = None
+    if duration_hours and str(duration_hours).lower() not in ('none', '0', '', 'permanent'):
+        try:
+            hours = float(duration_hours)
+            if hours > 0:
+                expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
+        except (ValueError, TypeError):
+            pass
+            
     # Upsert permission
     perm = DocumentPermission.query.filter_by(document_id=doc.id, user_id=target_user.id).first()
     if perm:
         perm.permission = permission_level
         perm.granted_by = granter.id
+        perm.expires_at = expires_at
     else:
         perm = DocumentPermission(
             document_id=doc.id,
             user_id=target_user.id,
             permission=permission_level,
-            granted_by=granter.id
+            granted_by=granter.id,
+            expires_at=expires_at
         )
         db.session.add(perm)
         
     db.session.commit()
     
+    exp_desc = f"expires {expires_at.strftime('%Y-%m-%d %H:%M UTC')}" if expires_at else "permanent"
     log_event(
         action='GRANT_PERMISSION',
         status='ALLOWED',
         user=granter,
         document=doc,
-        reason=f"Granted '{permission_level}' to user '{target_user.username}'"
+        reason=f"Granted '{permission_level}' to user '{target_user.username}' ({exp_desc})"
     )
-    return True, f"Successfully granted '{permission_level}' access to {target_user.username}"
+    return True, f"Successfully granted '{permission_level}' access to {target_user.username} ({exp_desc})"
 
 
 def revoke_permission(revoker, doc_id, target_user_id):
@@ -148,6 +169,7 @@ def revoke_permission(revoker, doc_id, target_user_id):
 def get_accessible_documents_query(user):
     """
     Returns an SQLAlchemy query filtered strictly to documents the user has rights to see.
+    Excludes documents where temporary permissions have expired.
     Prevents metadata leakage in search or catalog views.
     """
     if not user or not hasattr(user, 'id'):
@@ -157,12 +179,20 @@ def get_accessible_documents_query(user):
         # Admin can view all document metadata for governance oversight
         return Document.query
         
-    # Return documents owned by user OR explicitly shared with user
+    # Active (non-expired) permission document IDs
+    now = datetime.now(timezone.utc)
+    active_perm_doc_ids = db.session.query(DocumentPermission.document_id).filter(
+        DocumentPermission.user_id == user.id,
+        db.or_(
+            DocumentPermission.expires_at.is_(None),
+            DocumentPermission.expires_at > now
+        )
+    )
+    
+    # Return documents owned by user OR actively shared with user
     return Document.query.filter(
         db.or_(
             Document.owner_id == user.id,
-            Document.id.in_(
-                db.session.query(DocumentPermission.document_id).filter_by(user_id=user.id)
-            )
+            Document.id.in_(active_perm_doc_ids)
         )
     )

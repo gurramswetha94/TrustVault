@@ -815,6 +815,9 @@ body {
 .badge-owner { background: #3b82f6; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; }
 .badge-perm-read { background: #dbeafe; color: #1e40af; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; }
 .badge-perm-edit { background: #fef3c7; color: #92400e; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; }
+.badge-expiring { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; }
+.badge-expired { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; }
+.row-expired { background: #fff5f5; opacity: 0.75; }
 .btn-revoke { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 0.25rem 0.55rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
 .btn-revoke:hover { background: #fecaca; }
 

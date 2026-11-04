@@ -82,7 +82,7 @@ python -m unittest tests/test_tear_down.py
 ## 5. Architectural Write-Up
 
 ### What We Built
-1. **Role-Based & Discretionary Access Control (RBAC + DAC):** 3 core roles (`admin`, `owner`, `viewer`) paired with explicit per-document named grants (`read`, `edit`).
+1. **Role-Based & Discretionary Access Control (RBAC + DAC):** 3 core roles (`admin`, `owner`, `viewer`) paired with explicit per-document named grants (`read`, `edit`), plus **Time-Bound Self-Revoking Grants** (`1 hr`, `24 hrs`, `7 days`, `30 days`) to eliminate stale access.
 2. **Isolated Vault Storage:** Files are stored outside the web root under randomized UUIDs (`vault_storage/<uuid>.bin`). No direct URL path exists to bypass the server.
 3. **Deep File Validation:** Magic byte sniffing (verifying `%PDF-`, `\x89PNG`, `PK\x03\x04`), extension whitelisting, filename sanitization, and a 25MB ceiling.
 4. **Tamper-Evident Audit Ledger:** Append-only SHA-256 hash chaining with automated integrity verification.

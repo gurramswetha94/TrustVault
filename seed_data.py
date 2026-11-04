@@ -8,7 +8,7 @@ Supports self-healing auto-seeding for cloud deployments.
 import os
 import uuid
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from models import db, User, Document, DocumentPermission, AuditLog
 from services.audit_service import log_event
 
@@ -166,12 +166,13 @@ def seed_database(app=None, drop_existing=False):
             permission="read",
             granted_by=alice.id
         )
-        # Doc 1 (Alice's Contract doc) -> Dave has READ access.
+        # Doc 1 (Alice's Contract doc) -> Dave has READ access (Time-bound: expires in 7 days).
         p2 = DocumentPermission(
             document_id=created_docs[1].id,
             user_id=dave.id,
             permission="read",
-            granted_by=alice.id
+            granted_by=alice.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7)
         )
         # Doc 3 (Bob's Audit doc) -> Alice has EDIT access.
         p3 = DocumentPermission(

@@ -4,6 +4,7 @@ Proves Non-Negotiable Rule #3: Taking access away works immediately.
 """
 
 import unittest
+from datetime import datetime, timezone, timedelta
 from app import create_app
 from models import db, User, Document, DocumentPermission
 from seed_data import seed
@@ -66,6 +67,51 @@ class TestInstantRevocation(unittest.TestCase):
         self.login('dave_external', 'Dave@TrustVault2026!')
         res_after = self.client.get('/documents/1/download')
         self.assertEqual(res_after.status_code, 403, "Zero-latency check: Dave must be blocked immediately upon revocation")
+        self.logout()
+
+    def test_expiring_permission_self_revocation(self):
+        """
+        SELF-REVOKING ACCESS TEST:
+        1. Alice grants Carol 'read' access to Doc #2 with an expiration window of 1 hour.
+        2. Carol downloads Doc #2 -> SUCCESS (200 OK).
+        3. Expiration threshold is crossed (grant passes its expires_at timestamp).
+        4. Carol requests Doc #2 again -> IMMEDIATELY BLOCKED (403 Forbidden).
+        5. Doc #2 is automatically removed from Carol's accessible search/dashboard catalog.
+        """
+        # Step 1: Alice grants temporary 1-hour access to Carol for Doc #2
+        self.login('alice_owner', 'Alice@TrustVault2026!')
+        res_grant = self.client.post('/documents/2/permissions/grant', data={
+            'username': 'carol_viewer',
+            'permission': 'read',
+            'duration_hours': '1'
+        }, follow_redirects=True)
+        self.assertEqual(res_grant.status_code, 200)
+        self.logout()
+
+        # Step 2: Carol accesses document while grant is active
+        self.login('carol_viewer', 'Carol@TrustVault2026!')
+        res_active = self.client.get('/documents/2/download')
+        self.assertEqual(res_active.status_code, 200, "Carol must have access while grant is valid")
+        self.logout()
+
+        # Step 3: Simulate time elapsing past the expiration window
+        with self.app.app_context():
+            carol = User.query.filter_by(username='carol_viewer').first()
+            perm = DocumentPermission.query.filter_by(document_id=2, user_id=carol.id).first()
+            self.assertIsNotNone(perm)
+            self.assertIsNotNone(perm.expires_at)
+            # Set expiration to 10 minutes in the past
+            perm.expires_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+            db.session.commit()
+
+        # Step 4: Carol attempts download after expiration - MUST BE SELF-REVOKED (403)
+        self.login('carol_viewer', 'Carol@TrustVault2026!')
+        res_expired = self.client.get('/documents/2/download')
+        self.assertEqual(res_expired.status_code, 403, "Expired grant must self-revoke and return 403 Forbidden")
+        
+        # Step 5: Verify Doc #2 no longer appears in dashboard
+        res_dash = self.client.get('/dashboard')
+        self.assertNotIn(b"Master Services Agreement - Enterprise Corp", res_dash.data, "Expired doc must disappear from dashboard")
         self.logout()
 
 if __name__ == '__main__':

@@ -110,6 +110,18 @@ Every asset (binary file payload, document metadata, audit record, permission gr
 
 ---
 
+### Threat 09: Stale / Zombie Permission Grants (Lack of Time-Bound Access)
+- **OWASP Category:** A01:2021 Broken Access Control / Permission Accumulation
+- **Attack Vector:** An employee or auditor is granted access to review confidential files for a specific project. After the project concludes, the owner forgets to manually revoke access. Weeks or months later, the user retains unauthorized access ("zombie grant") and can still inspect or exfiltrate documents.
+- **Mitigation Implemented:**  
+  1. Time-Bound Grants: Owners can specify duration windows (`1 hr`, `24 hrs`, `7 days`, `30 days`) during access delegation.
+  2. **Real-Time Self-Revocation:** In [`services/permission_service.py::check_document_access()`](file:///C:/Users/Swetha/Trustvault/services/permission_service.py), the server compares `expires_at` against `datetime.now(timezone.utc)`. The millisecond a grant expires, access is blocked immediately with `HTTP 403 Forbidden` without relying on delayed background cron jobs.
+  3. **Automatic Discovery Eviction:** In [`get_accessible_documents_query()`](file:///C:/Users/Swetha/Trustvault/services/permission_service.py), expired grants are filtered out of SQL results so expired documents disappear from search and library views.
+- **Automated Test:** [`tests/test_revocation.py::TestInstantRevocation::test_expiring_permission_self_revocation`](file:///C:/Users/Swetha/Trustvault/tests/test_revocation.py#L70-L115)
+- **Accepted / Residual Risk:** Permanent grants (`expires_at is None`) still require manual owner revocation. Owners are prompted with expiration recommendations in the UI.
+
+---
+
 ## 3. Deliberately Omitted Features & Strategic Trade-Offs
 
 1. **Folder-Level Inheritance:**  

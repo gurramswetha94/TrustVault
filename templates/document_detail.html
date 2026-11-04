@@ -71,6 +71,15 @@
                         <option value="edit">Edit (Metadata &amp; Upload)</option>
                     </select>
                 </div>
+                <div class="form-group flex-1">
+                    <select name="duration_hours" title="Access Expiration Window">
+                        <option value="none" selected>Permanent (No Expiry)</option>
+                        <option value="1">⏱️ Expires in 1 Hour</option>
+                        <option value="24">⏱️ Expires in 24 Hours</option>
+                        <option value="168">⏱️ Expires in 7 Days</option>
+                        <option value="720">⏱️ Expires in 30 Days</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-primary">Grant Access</button>
             </form>
         </div>
@@ -83,6 +92,7 @@
                         <th>Authorized User</th>
                         <th>User Role</th>
                         <th>Permission Level</th>
+                        <th>Validity / Expiry</th>
                         <th>Granted By</th>
                         <th>Granted At</th>
                         <th>Action</th>
@@ -94,17 +104,33 @@
                         <td><strong>{{ doc.owner.username }}</strong></td>
                         <td><span class="user-role role-{{ doc.owner.role }}">{{ doc.owner.role|upper }}</span></td>
                         <td><span class="badge badge-owner">OWNER (Full Control)</span></td>
+                        <td><span class="badge badge-perm-read">Never Expires</span></td>
                         <td>System (Creator)</td>
                         <td>{{ doc.created_at.strftime('%Y-%m-%d') }}</td>
                         <td><span class="text-muted">Immutable</span></td>
                     </tr>
 
                     {% for p in permissions %}
-                    <tr>
+                    <tr {% if p.is_expired() %}class="row-expired"{% endif %}>
                         <td><strong>{{ p.user.username }}</strong></td>
                         <td><span class="user-role role-{{ p.user.role }}">{{ p.user.role|upper }}</span></td>
                         <td>
                             <span class="badge badge-perm-{{ p.permission }}">{{ p.permission|upper }}</span>
+                        </td>
+                        <td>
+                            {% if p.expires_at %}
+                                {% if p.is_expired() %}
+                                    <span class="badge badge-expired" title="Expired on {{ p.expires_at.strftime('%Y-%m-%d %H:%M UTC') }}">
+                                        ⛔ EXPIRED (Self-Revoked)
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-expiring" title="Expires at {{ p.expires_at.strftime('%Y-%m-%d %H:%M UTC') }}">
+                                        ⏱️ {{ p.remaining_time_str() }}
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Permanent</span>
+                            {% endif %}
                         </td>
                         <td>{{ p.granter.username if p.granter else 'System' }}</td>
                         <td>{{ p.granted_at.strftime('%Y-%m-%d %H:%M') }}</td>
@@ -118,7 +144,7 @@
 
                     {% if not permissions %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted">No external users have been granted access. This document is private to {{ doc.owner.username }}.</td>
+                        <td colspan="7" class="text-center text-muted">No external users have been granted access. This document is private to {{ doc.owner.username }}.</td>
                     </tr>
                     {% endif %}
                 </tbody>

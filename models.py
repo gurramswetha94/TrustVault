@@ -99,8 +99,41 @@ class DocumentPermission(db.Model):
     
     granted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     granted_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    # Time-Bound Access Control: Optional expiration timestamp
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
     
     granter = db.relationship('User', foreign_keys=[granted_by])
+
+    def is_expired(self):
+        """Returns True if the permission grant has passed its expiration timestamp."""
+        if not self.expires_at:
+            return False
+        now = datetime.now(timezone.utc)
+        target = self.expires_at
+        if target.tzinfo is None:
+            target = target.replace(tzinfo=timezone.utc)
+        return now > target
+
+    def remaining_time_str(self):
+        """Human-readable countdown of remaining grant validity."""
+        if not self.expires_at:
+            return "Permanent"
+        now = datetime.now(timezone.utc)
+        target = self.expires_at
+        if target.tzinfo is None:
+            target = target.replace(tzinfo=timezone.utc)
+        delta = target - now
+        if delta.total_seconds() <= 0:
+            return "Expired"
+        hours = int(delta.total_seconds() // 3600)
+        days = hours // 24
+        if days > 1:
+            return f"{days} days left"
+        elif hours >= 1:
+            return f"{hours} hrs left"
+        else:
+            mins = int(delta.total_seconds() // 60)
+            return f"{max(1, mins)} mins left"
 
     def to_dict(self):
         return {
@@ -110,7 +143,9 @@ class DocumentPermission(db.Model):
             'username': self.user.username if self.user else None,
             'permission': self.permission,
             'granted_by': self.granter.username if self.granter else None,
-            'granted_at': self.granted_at.isoformat()
+            'granted_at': self.granted_at.isoformat(),
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'is_expired': self.is_expired()
         }
 
 

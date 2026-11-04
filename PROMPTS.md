@@ -113,3 +113,25 @@
 - **What I Did Instead:**  
   Updated the route to explicitly call `abort(403, description=message)` on any authorization failure. Added test case `test_read_grantee_cannot_delete_document` in `tests/test_permissions.py` asserting `response.status_code == 403`.
 
+---
+
+### Entry 6: Delayed Revocation Window via Periodic Cron Cleanup for Expiring Grants
+- **Date:** Nov 4, 2026
+- **Commit Reference:** [`Commit 4f88a91`](file:///C:/Users/Swetha/Trustvault/services/permission_service.py#L40-L75) (feat: implement real-time self-revoking time-bound grants)
+- **What I Asked the Tool to Do:**  
+  *"Add time-bound access sharing so document owners can set temporary access durations (e.g. 1 hour, 24 hours, 7 days)."*
+- **What It Produced:**  
+  The AI suggested running a background Celery / APScheduler cron job that executes once every hour:
+  ```python
+  @scheduler.scheduled_job('interval', hours=1)
+  def cleanup_expired_permissions():
+      now = datetime.utcnow()
+      DocumentPermission.query.filter(DocumentPermission.expires_at < now).delete()
+      db.session.commit()
+  ```
+- **What Was Wrong With It, Specifically:**  
+  **Direct Violation of Non-Negotiable Rule #3 (Instant Revocation).** Relying on an hourly background job introduces a severe **delayed revocation window of up to 59 minutes**. If an owner granted access that expired at 14:00:00, and the cron job runs at 14:59:00, the user could continue downloading files for 59 minutes after access officially expired. The server was trusting stale database records between cron intervals.
+- **What I Did Instead:**  
+  Rejected the background batch cleanup architecture. Implemented **Real-Time Dynamic Evaluation** inside [`services/permission_service.py::check_document_access()`](file:///C:/Users/Swetha/Trustvault/services/permission_service.py):
+  Every download or view request evaluates `perm_entry.is_expired()` on the fly against the current UTC timestamp. The exact millisecond `expires_at` is surpassed, `check_document_access()` denies access and returns `HTTP 403 Forbidden`. Furthermore, filtered out expired records in `get_accessible_documents_query()` so expired documents disappear from search and dashboard views automatically. Added automated test `test_expiring_permission_self_revocation` in `tests/test_revocation.py`.
+
