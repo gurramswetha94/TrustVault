@@ -174,11 +174,11 @@ def seed_database(app=None, drop_existing=False):
             granted_by=alice.id,
             expires_at=datetime.now(timezone.utc) + timedelta(days=7)
         )
-        # Doc 3 (Bob's Audit doc) -> Alice has EDIT access.
+        # Doc 3 (Bob's Audit doc) -> Alice has READ access.
         p3 = DocumentPermission(
             document_id=created_docs[3].id,
             user_id=alice.id,
-            permission="edit",
+            permission="read",
             granted_by=bob.id
         )
         
@@ -187,7 +187,7 @@ def seed_database(app=None, drop_existing=False):
         
         log_event(action="GRANT_PERMISSION", status="ALLOWED", user=alice, document=created_docs[0], reason=f"Granted 'read' to {carol.username}")
         log_event(action="GRANT_PERMISSION", status="ALLOWED", user=alice, document=created_docs[1], reason=f"Granted 'read' to {dave.username}")
-        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=bob, document=created_docs[3], reason=f"Granted 'edit' to {alice.username}")
+        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=bob, document=created_docs[3], reason=f"Granted 'read' to {alice.username}")
         
         # 4. Simulate Refused Attempt in Audit Log (Rule #2 Proof)
         log_event(

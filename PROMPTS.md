@@ -135,3 +135,19 @@
   Rejected the background batch cleanup architecture. Implemented **Real-Time Dynamic Evaluation** inside [`services/permission_service.py::check_document_access()`](file:///C:/Users/Swetha/Trustvault/services/permission_service.py):
   Every download or view request evaluates `perm_entry.is_expired()` on the fly against the current UTC timestamp. The exact millisecond `expires_at` is surpassed, `check_document_access()` denies access and returns `HTTP 403 Forbidden`. Furthermore, filtered out expired records in `get_accessible_documents_query()` so expired documents disappear from search and dashboard views automatically. Added automated test `test_expiring_permission_self_revocation` in `tests/test_revocation.py`.
 
+---
+
+### Entry 7: 2026-11-04 — Restricting External Delegation to Strict Read-Only (Defense of "What We Chose Not to Build")
+- **Commit Reference:** [`Commit 8c47f92`](file:///C:/Users/Swetha/Trustvault/templates/document_detail.html#L70-L80) (feat(permissions): enforce strictly read-only grants for external users)
+- **What I Asked the Tool to Do:**  
+  *"Clarify the meaning of the 'Edit' permission option when granting access, and remove the edit option to enforce strictly read-only access for external collaborators."*
+- **What It Produced:**  
+  The AI previously presented an open `<select name="permission">` in the document detail template offering Document Owners the choice between `"read"` and `"edit"` grants, allowing external invitees to edit metadata or upload revisions.
+- **What Was Wrong With It, Specifically:**  
+  In a high-security vault application handling salary letters, trade secret blueprints, and regulatory audit files, granting external users write/edit capabilities introduces significant data integrity risks. An external party granted access to review an audit file could silently rename it, reclassify its category, or alter description records. In TrustVault's zero-trust threat model, document modification authority must remain strictly with the Document Owner (and System Admin).
+- **What I Did Instead:**  
+  1. Updated [`templates/document_detail.html`](file:///C:/Users/Swetha/Trustvault/templates/document_detail.html) to eliminate the "Edit" choice in the permission grant form, locking external grants to `🔒 Read-Only (Download & View)`.
+  2. Standardized all sample seed grants in [`seed_data.py`](file:///C:/Users/Swetha/Trustvault/seed_data.py) to `"read"`.
+  3. Preserved server-side privilege escalation tests in [`tests/test_permissions.py`](file:///C:/Users/Swetha/Trustvault/tests/test_permissions.py) verifying that any attempt by a grantee to edit metadata returns `HTTP 403 Forbidden`. This defends the architectural choice: *"A smaller system with a permission model that holds beats a larger one with a hole in it."*
+
+

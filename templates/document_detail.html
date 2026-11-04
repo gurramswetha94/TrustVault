@@ -70,11 +70,11 @@
                 <div class="form-group flex-2">
                     <input type="text" name="username" required placeholder="Enter username (e.g. carol_viewer, dave_external)">
                 </div>
-                <div class="form-group flex-1">
-                    <select name="permission">
-                        <option value="read" selected>Read Only (Download)</option>
-                        <option value="edit">Edit (Metadata &amp; Upload)</option>
-                    </select>
+                <input type="hidden" name="permission" value="read">
+                <div class="form-group flex-1" style="display: flex; align-items: center;">
+                    <span class="badge badge-perm-read" style="padding: 0.65rem 1rem; font-size: 0.85rem; width: 100%; text-align: center; border-radius: 6px; display: inline-block;">
+                        🔒 Read-Only (Download &amp; View)
+                    </span>
                 </div>
                 <div class="form-group flex-1">
                     <select name="duration_hours" title="Access Expiration Window">
