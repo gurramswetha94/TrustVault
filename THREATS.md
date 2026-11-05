@@ -122,6 +122,18 @@ Every asset (binary file payload, document metadata, audit record, permission gr
 
 ---
 
+### Threat 10: Lingering Access & Data Hoarding (Burn-After-Reading Quotas)
+- **OWASP Category:** A01:2021 Broken Access Control / Excessive Data Retrieval
+- **Attack Vector:** An external contractor, job candidate, or regulatory auditor is granted access to inspect a single document (e.g. an offer letter or audit statement). Even with a 24-hour time window, the user could download or scrape the file dozens of times, or retain lingering access long after their single review task was finished.
+- **Mitigation Implemented:**  
+  1. **Burn-After-Reading / Download Quotas:** Document Owners can configure a strict download limit (e.g. `1 Time (Burn After Reading)`, `2`, `5`, or `10` downloads) in addition to time-bound windows.
+  2. **Real-Time Quota Decrement & Instant Self-Revocation:** In [`services/document_service.py::stream_document_content()`](file:///C:/Users/Swetha/Trustvault/services/document_service.py#L130-L175), every download increments the counter. The exact moment `download_count >= max_downloads`, the server logs a `REVOKE_PERMISSION` self-revocation event to the audit ledger.
+  3. **Zero-Latency Gatekeeping:** All subsequent download or metadata requests are blocked with `HTTP 403 Forbidden`, and the document is immediately evicted from the user's dashboard and search catalog.
+- **Automated Test:** [`tests/test_revocation.py::TestInstantRevocation::test_single_use_burn_after_reading_grant`](file:///C:/Users/Swetha/Trustvault/tests/test_revocation.py#L117-L155)
+- **Accepted / Residual Risk:** Once a file is downloaded to a user's local workstation, client-side DRM (preventing screenshots or local copying) is outside the web server's scope. Server-side access is completely terminated.
+
+---
+
 ## 3. Deliberately Omitted Features & Strategic Trade-Offs
 
 1. **Folder-Level Inheritance:**  

@@ -102,10 +102,20 @@ class DocumentPermission(db.Model):
     # Time-Bound Access Control: Optional expiration timestamp
     expires_at = db.Column(db.DateTime, nullable=True, index=True)
     
+    # Single-Use / Burn-After-Reading Access: Max allowed downloads/opens quota
+    max_downloads = db.Column(db.Integer, nullable=True) # None = unlimited, or 1, 2, 5, etc.
+    download_count = db.Column(db.Integer, nullable=False, default=0)
+    
     granter = db.relationship('User', foreign_keys=[granted_by])
 
+    def is_exhausted(self):
+        """Returns True if the maximum allowed downloads have been reached."""
+        return self.max_downloads is not None and self.download_count >= self.max_downloads
+
     def is_expired(self):
-        """Returns True if the permission grant has passed its expiration timestamp."""
+        """Returns True if time has expired OR download quota has been exhausted."""
+        if self.is_exhausted():
+            return True
         if not self.expires_at:
             return False
         now = datetime.now(timezone.utc)
@@ -135,6 +145,17 @@ class DocumentPermission(db.Model):
             mins = int(delta.total_seconds() // 60)
             return f"{max(1, mins)} mins left"
 
+    def remaining_quota_str(self):
+        """Human-readable description of remaining download quota."""
+        if self.max_downloads is None:
+            return "Unlimited"
+        remaining = max(0, self.max_downloads - self.download_count)
+        if remaining == 0:
+            return "Exhausted"
+        if self.max_downloads == 1:
+            return "1 download left (Burn After Reading)"
+        return f"{remaining} of {self.max_downloads} left"
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -145,6 +166,9 @@ class DocumentPermission(db.Model):
             'granted_by': self.granter.username if self.granter else None,
             'granted_at': self.granted_at.isoformat(),
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'max_downloads': self.max_downloads,
+            'download_count': self.download_count,
+            'is_exhausted': self.is_exhausted(),
             'is_expired': self.is_expired()
         }
 

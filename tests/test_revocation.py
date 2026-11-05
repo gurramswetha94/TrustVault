@@ -114,6 +114,44 @@ class TestInstantRevocation(unittest.TestCase):
         self.assertNotIn(b"Master Services Agreement - Enterprise Corp", res_dash.data, "Expired doc must disappear from dashboard")
         self.logout()
 
+    def test_single_use_burn_after_reading_grant(self):
+        """
+        SINGLE-USE / BURN-AFTER-READING REVOCATION TEST:
+        1. Alice grants Carol access to Doc #2 with max_downloads=1.
+        2. Carol downloads Doc #2 once -> SUCCESS (200 OK).
+        3. Carol immediately attempts to download Doc #2 a 2nd time -> BLOCKED (403 Forbidden).
+        4. Carol attempts to view Doc #2 detail page -> BLOCKED (403 Forbidden).
+        5. Doc #2 is automatically removed from Carol's dashboard and search catalog.
+        """
+        # Step 1: Alice grants 1-time single-use access to Carol for Doc #2
+        self.login('alice_owner', 'Alice@TrustVault2026!')
+        res_grant = self.client.post('/documents/2/permissions/grant', data={
+            'username': 'carol_viewer',
+            'permission': 'read',
+            'max_downloads': '1'
+        }, follow_redirects=True)
+        self.assertEqual(res_grant.status_code, 200)
+        self.logout()
+
+        # Step 2: Carol performs 1st download - MUST SUCCEED (200 OK)
+        self.login('carol_viewer', 'Carol@TrustVault2026!')
+        res_dl1 = self.client.get('/documents/2/download')
+        self.assertEqual(res_dl1.status_code, 200, "Carol must succeed on 1st download")
+        self.assertTrue(res_dl1.data.startswith(b'%PDF-'))
+
+        # Step 3: Carol attempts 2nd download - MUST BE BLOCKED (403 Forbidden)
+        res_dl2 = self.client.get('/documents/2/download')
+        self.assertEqual(res_dl2.status_code, 403, "Burned grant must reject 2nd download attempt with 403")
+
+        # Step 4: Carol attempts to view metadata detail - MUST BE BLOCKED (403 Forbidden)
+        res_detail = self.client.get('/documents/2')
+        self.assertEqual(res_detail.status_code, 403, "Exhausted quota must block document detail access")
+
+        # Step 5: Verify Doc #2 disappeared from Carol's catalog
+        res_dash = self.client.get('/dashboard')
+        self.assertNotIn(b"Master Services Agreement - Enterprise Corp", res_dash.data, "Burned doc must vanish from catalog")
+        self.logout()
+
 if __name__ == '__main__':
     unittest.main()
 

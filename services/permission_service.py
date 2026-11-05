@@ -43,8 +43,10 @@ def check_document_access(user, doc_id, required_permission='read'):
     if not perm_entry:
         return False, f"User '{user.username}' has not been granted access to this document", doc
         
-    # Time-Bound Access Check: Self-revoking expired permissions
+    # Time-Bound & Quota-Bound Access Check: Self-revoking expired permissions
     if perm_entry.is_expired():
+        if perm_entry.is_exhausted():
+            return False, f"Access quota exhausted ({perm_entry.download_count}/{perm_entry.max_downloads} downloads used). Access self-revoked immediately.", doc
         exp_time = perm_entry.expires_at.strftime('%Y-%m-%d %H:%M:%S UTC') if perm_entry.expires_at else 'N/A'
         return False, f"Access grant for user '{user.username}' expired on {exp_time} (Self-Revocation)", doc
         
@@ -63,11 +65,12 @@ def check_document_access(user, doc_id, required_permission='read'):
     return False, "Permission level unrecognized or denied", doc
 
 
-def grant_permission(granter, doc_id, target_username, permission_level, duration_hours=None):
+def grant_permission(granter, doc_id, target_username, permission_level, duration_hours=None, max_downloads=None):
     """
     Grants read or edit permission on doc_id to target_username.
     Only the document owner (or admin) can grant permissions.
     Supports optional duration_hours (e.g. 1, 24, 168, 720) for auto-expiring access.
+    Supports optional max_downloads (e.g. 1 for Single-Use Burn-After-Reading, 2, 5, etc.).
     """
     can_manage, reason, doc = check_document_access(granter, doc_id, required_permission='manage')
     if not can_manage:
@@ -100,6 +103,16 @@ def grant_permission(granter, doc_id, target_username, permission_level, duratio
                 expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
         except (ValueError, TypeError):
             pass
+
+    # Parse max_downloads quota (e.g. 1 for burn-after-reading, or None for unlimited)
+    parsed_max_downloads = None
+    if max_downloads and str(max_downloads).lower() not in ('none', '0', '', 'unlimited'):
+        try:
+            val = int(max_downloads)
+            if val > 0:
+                parsed_max_downloads = val
+        except (ValueError, TypeError):
+            pass
             
     # Upsert permission
     perm = DocumentPermission.query.filter_by(document_id=doc.id, user_id=target_user.id).first()
@@ -107,27 +120,34 @@ def grant_permission(granter, doc_id, target_username, permission_level, duratio
         perm.permission = permission_level
         perm.granted_by = granter.id
         perm.expires_at = expires_at
+        perm.max_downloads = parsed_max_downloads
+        perm.download_count = 0 # Fresh grant resets usage counter
     else:
         perm = DocumentPermission(
             document_id=doc.id,
             user_id=target_user.id,
             permission=permission_level,
             granted_by=granter.id,
-            expires_at=expires_at
+            expires_at=expires_at,
+            max_downloads=parsed_max_downloads,
+            download_count=0
         )
         db.session.add(perm)
         
     db.session.commit()
     
     exp_desc = f"expires {expires_at.strftime('%Y-%m-%d %H:%M UTC')}" if expires_at else "permanent"
+    quota_desc = f"{parsed_max_downloads} max download(s)" if parsed_max_downloads else "unlimited downloads"
+    full_desc = f"{exp_desc}, {quota_desc}"
+    
     log_event(
         action='GRANT_PERMISSION',
         status='ALLOWED',
         user=granter,
         document=doc,
-        reason=f"Granted '{permission_level}' to user '{target_user.username}' ({exp_desc})"
+        reason=f"Granted '{permission_level}' to user '{target_user.username}' ({full_desc})"
     )
-    return True, f"Successfully granted '{permission_level}' access to {target_user.username} ({exp_desc})"
+    return True, f"Successfully granted access to {target_user.username} ({full_desc})"
 
 
 def revoke_permission(revoker, doc_id, target_user_id):
@@ -179,13 +199,17 @@ def get_accessible_documents_query(user):
         # Admin can view all document metadata for governance oversight
         return Document.query
         
-    # Active (non-expired) permission document IDs
+    # Active (non-expired and non-exhausted) permission document IDs
     now = datetime.now(timezone.utc)
     active_perm_doc_ids = db.session.query(DocumentPermission.document_id).filter(
         DocumentPermission.user_id == user.id,
         db.or_(
             DocumentPermission.expires_at.is_(None),
             DocumentPermission.expires_at > now
+        ),
+        db.or_(
+            DocumentPermission.max_downloads.is_(None),
+            DocumentPermission.download_count < DocumentPermission.max_downloads
         )
     )
     

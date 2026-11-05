@@ -72,8 +72,8 @@
                 </div>
                 <input type="hidden" name="permission" value="read">
                 <div class="form-group flex-1" style="display: flex; align-items: center;">
-                    <span class="badge badge-perm-read" style="padding: 0.65rem 1rem; font-size: 0.85rem; width: 100%; text-align: center; border-radius: 6px; display: inline-block;">
-                        🔒 Read-Only (Download &amp; View)
+                    <span class="badge badge-perm-read" style="padding: 0.65rem 0.8rem; font-size: 0.85rem; width: 100%; text-align: center; border-radius: 6px; display: inline-block;">
+                        🔒 Read-Only
                     </span>
                 </div>
                 <div class="form-group flex-1">
@@ -83,6 +83,16 @@
                         <option value="24">⏱️ Expires in 24 Hours</option>
                         <option value="168">⏱️ Expires in 7 Days</option>
                         <option value="720">⏱️ Expires in 30 Days</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <select name="max_downloads" title="Burn-After-Reading / Download Quota">
+                        <option value="none" selected>♾️ Unlimited Downloads</option>
+                        <option value="1">🔥 1 Time (Burn After Reading)</option>
+                        <option value="2">2 Downloads</option>
+                        <option value="3">3 Downloads</option>
+                        <option value="5">5 Downloads</option>
+                        <option value="10">10 Downloads</option>
                     </select>
                 </div>
                 <button type="submit" class="btn btn-primary">Grant Access</button>
@@ -98,6 +108,7 @@
                         <th>User Role</th>
                         <th>Permission Level</th>
                         <th>Validity / Expiry</th>
+                        <th>Download Quota</th>
                         <th>Granted By</th>
                         <th>Granted At</th>
                         <th>Action</th>
@@ -110,6 +121,7 @@
                         <td><span class="user-role role-{{ doc.owner.role }}">{{ doc.owner.role|upper }}</span></td>
                         <td><span class="badge badge-owner">OWNER (Full Control)</span></td>
                         <td><span class="badge badge-perm-read">Never Expires</span></td>
+                        <td><span class="badge badge-perm-read">♾️ Unlimited</span></td>
                         <td>System (Creator)</td>
                         <td>{{ doc.created_at.strftime('%Y-%m-%d') }}</td>
                         <td><span class="text-muted">Immutable</span></td>
@@ -124,7 +136,7 @@
                         </td>
                         <td>
                             {% if p.expires_at %}
-                                {% if p.is_expired() %}
+                                {% if p.is_expired() and not p.is_exhausted() %}
                                     <span class="badge badge-expired" title="Expired on {{ p.expires_at.strftime('%Y-%m-%d %H:%M UTC') }}">
                                         ⛔ EXPIRED (Self-Revoked)
                                     </span>
@@ -135,6 +147,25 @@
                                 {% endif %}
                             {% else %}
                                 <span class="text-muted">Permanent</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.max_downloads %}
+                                {% if p.is_exhausted() %}
+                                    <span class="badge badge-expired" title="All {{ p.max_downloads }} download(s) consumed">
+                                        ⛔ {{ p.download_count }}/{{ p.max_downloads }} EXHAUSTED
+                                    </span>
+                                {% elif p.max_downloads == 1 %}
+                                    <span class="badge badge-expiring" style="background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;" title="Burn after 1 download">
+                                        🔥 1-Time Use ({{ p.download_count }}/1 used)
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-expiring" title="{{ p.download_count }} of {{ p.max_downloads }} downloads used">
+                                        📊 {{ p.download_count }}/{{ p.max_downloads }} used
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">♾️ Unlimited</span>
                             {% endif %}
                         </td>
                         <td>{{ p.granter.username if p.granter else 'System' }}</td>
@@ -149,7 +180,7 @@
 
                     {% if not permissions %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted">No external users have been granted access. This document is private to {{ doc.owner.username }}.</td>
+                        <td colspan="8" class="text-center text-muted">No external users have been granted access. This document is private to {{ doc.owner.username }}.</td>
                     </tr>
                     {% endif %}
                 </tbody>

@@ -150,4 +150,21 @@
   2. Standardized all sample seed grants in [`seed_data.py`](file:///C:/Users/Swetha/Trustvault/seed_data.py) to `"read"`.
   3. Preserved server-side privilege escalation tests in [`tests/test_permissions.py`](file:///C:/Users/Swetha/Trustvault/tests/test_permissions.py) verifying that any attempt by a grantee to edit metadata returns `HTTP 403 Forbidden`. This defends the architectural choice: *"A smaller system with a permission model that holds beats a larger one with a hole in it."*
 
+---
+
+### Entry 8: 2026-11-05 — Single-Use / "Burn-After-Reading" Quotas for Immediate Auto-Revocation
+- **Commit Reference:** [`Commit 2d87e14`](file:///C:/Users/Swetha/Trustvault/services/document_service.py#L130-L175) (feat(authz): implement single-use burn-after-reading download quotas)
+- **What I Asked the Tool to Do:**  
+  *"Add an authorization control where the document owner can specify how many times another person is allowed to open or download a document before their access is revoked."*
+- **What It Produced:**  
+  The AI suggested returning a one-time presigned URL or token generated with an HMAC counter query string that decrements in memory.
+- **What Was Wrong With It, Specifically:**  
+  **Severe Violation of Non-Negotiable Rules #1 & #2.** Token query strings and presigned URLs leak into browser history, web server proxy logs, and reverse proxy access files. Furthermore, relying on an in-memory counter breaks in multi-worker environments (e.g. Gunicorn with multiple workers on cloud deployments) and allows race conditions where an attacker fires simultaneous concurrent requests to download the document multiple times before memory state reconciles.
+- **What I Did Instead:**  
+  1. Extended the persistent database schema in [`models.py`](file:///C:/Users/Swetha/Trustvault/models.py) with `max_downloads` and `download_count` on `DocumentPermission`.
+  2. Implemented database transaction-level counting inside [`services/document_service.py::stream_document_content()`](file:///C:/Users/Swetha/Trustvault/services/document_service.py). When a grantee reaches `download_count >= max_downloads`, the server writes a `REVOKE_PERMISSION` event to the cryptographic ledger.
+  3. Real-time gatekeeping in [`services/permission_service.py`](file:///C:/Users/Swetha/Trustvault/services/permission_service.py) immediately returns `HTTP 403 Forbidden` on all subsequent requests and evicts the document from catalog search queries.
+  4. Added automated test `test_single_use_burn_after_reading_grant` in [`tests/test_revocation.py`](file:///C:/Users/Swetha/Trustvault/tests/test_revocation.py) proving single-use lifecycle.
+
+
 

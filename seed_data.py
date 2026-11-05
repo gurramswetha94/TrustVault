@@ -166,13 +166,15 @@ def seed_database(app=None, drop_existing=False):
             permission="read",
             granted_by=alice.id
         )
-        # Doc 1 (Alice's Contract doc) -> Dave has READ access (Time-bound: expires in 7 days).
+        # Doc 1 (Alice's Contract doc) -> Dave has READ access (Time-bound: expires in 7 days, Quota: 3 downloads).
         p2 = DocumentPermission(
             document_id=created_docs[1].id,
             user_id=dave.id,
             permission="read",
             granted_by=alice.id,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=7)
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+            max_downloads=3,
+            download_count=0
         )
         # Doc 3 (Bob's Audit doc) -> Alice has READ access.
         p3 = DocumentPermission(
@@ -185,9 +187,9 @@ def seed_database(app=None, drop_existing=False):
         db.session.add_all([p1, p2, p3])
         db.session.commit()
         
-        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=alice, document=created_docs[0], reason=f"Granted 'read' to {carol.username}")
-        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=alice, document=created_docs[1], reason=f"Granted 'read' to {dave.username}")
-        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=bob, document=created_docs[3], reason=f"Granted 'read' to {alice.username}")
+        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=alice, document=created_docs[0], reason=f"Granted 'read' to {carol.username} (unlimited)")
+        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=alice, document=created_docs[1], reason=f"Granted 'read' to {dave.username} (expires in 7 days, max 3 downloads)")
+        log_event(action="GRANT_PERMISSION", status="ALLOWED", user=bob, document=created_docs[3], reason=f"Granted 'read' to {alice.username} (unlimited)")
         
         # 4. Simulate Refused Attempt in Audit Log (Rule #2 Proof)
         log_event(

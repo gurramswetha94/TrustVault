@@ -33,7 +33,7 @@
 
 | Endpoint | Method | Required Auth | Permitted Roles & Grants | Description |
 |---|---|---|---|---|
-| `/documents/<id>/permissions/grant` | `POST` | Authenticated | Document Owner OR `admin` | Grants `read` or `edit` permission to a named user with optional `duration_hours` (e.g. `1`, `24`, `168`, `720` for self-revoking time-bound grants). Logs `GRANT_PERMISSION`. Viewers calling this receive `403`. |
+| `/documents/<id>/permissions/grant` | `POST` | Authenticated | Document Owner OR `admin` | Grants `read` permission to a named user with optional `duration_hours` (e.g. `1`, `24`, `168`, `720` for self-revoking time-bound grants) and optional `max_downloads` (e.g. `1` for Single-Use / Burn-After-Reading, `2`, `5`, `10` quota). Logs `GRANT_PERMISSION`. Viewers calling this receive `403`. |
 | `/documents/<id>/permissions/revoke/<user_id>` | `POST` | Authenticated | Document Owner OR `admin` | **Instant Revocation:** Deletes permission row immediately from database. Subsequent requests by revoked user fail with `403` instantly. |
 | `/api/users/search` | `GET` | Authenticated | `owner`, `admin` | Returns user suggestions for permission delegation form. |
 

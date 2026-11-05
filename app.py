@@ -77,6 +77,18 @@ def create_app(config_class=Config):
     # Auto-initialize tables and ensure seed accounts exist
     with app.app_context():
         db.create_all()
+        # Safe self-migration: ensure quota columns exist on existing database instances
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(db.text("SELECT max_downloads FROM document_permissions LIMIT 1"))
+        except Exception:
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE document_permissions ADD COLUMN max_downloads INTEGER DEFAULT NULL"))
+                    conn.execute(db.text("ALTER TABLE document_permissions ADD COLUMN download_count INTEGER NOT NULL DEFAULT 0"))
+                    conn.commit()
+            except Exception as mig_err:
+                print(f"[STARTUP] Migration notice: {mig_err}")
         try:
             from models import User
             if User.query.first() is None:

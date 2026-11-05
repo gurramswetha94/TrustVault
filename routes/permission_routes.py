@@ -17,6 +17,7 @@ def grant(doc_id):
     target_username = request.form.get('username') or (request.json.get('username') if request.is_json else None)
     permission_level = request.form.get('permission') or (request.json.get('permission') if request.is_json else 'read')
     duration_hours = request.form.get('duration_hours') or (request.json.get('duration_hours') if request.is_json else None)
+    max_downloads = request.form.get('max_downloads') or (request.json.get('max_downloads') if request.is_json else None)
     
     if not target_username:
         if request.is_json:
@@ -24,7 +25,14 @@ def grant(doc_id):
         flash("Username is required to grant permissions.", "danger")
         return redirect(url_for('documents.detail', doc_id=doc_id))
         
-    success, message = grant_permission(user, doc_id, target_username, permission_level, duration_hours=duration_hours)
+    success, message = grant_permission(
+        user,
+        doc_id,
+        target_username,
+        permission_level,
+        duration_hours=duration_hours,
+        max_downloads=max_downloads
+    )
     
     if request.is_json:
         status_code = 200 if success else 400

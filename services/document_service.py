@@ -9,7 +9,7 @@ import uuid
 import hashlib
 from werkzeug.utils import secure_filename
 from flask import current_app, send_file, abort
-from models import db, Document
+from models import db, Document, DocumentPermission
 from services.audit_service import log_event
 from services.permission_service import check_document_access
 
@@ -133,6 +133,7 @@ def stream_document_content(user, doc_id):
     THE CRITICAL AUTHORIZATION GATEWAY:
     Evaluates permission in real-time before streaming any file bytes.
     Records BOTH allowed and refused/denied attempts in the audit trail.
+    Enforces Burn-After-Reading download quotas and auto-revocation.
     """
     can_access, reason, doc = check_document_access(user, doc_id, required_permission='read')
     
@@ -148,13 +149,31 @@ def stream_document_content(user, doc_id):
         )
         abort(403, description=f"Access Denied: {reason}")
         
+    # Check if this is a grantee (non-owner) with a download limit
+    quota_note = ""
+    if user.id != doc.owner_id:
+        perm = DocumentPermission.query.filter_by(document_id=doc.id, user_id=user.id).first()
+        if perm and perm.max_downloads is not None:
+            perm.download_count += 1
+            db.session.commit()
+            quota_note = f" (Download {perm.download_count} of {perm.max_downloads})"
+            if perm.is_exhausted():
+                quota_note += " [BURNED: Quota Exhausted & Self-Revoked]"
+                log_event(
+                    action='REVOKE_PERMISSION',
+                    status='ALLOWED',
+                    user=user,
+                    document=doc,
+                    reason=f"Quota exhausted: {perm.download_count}/{perm.max_downloads} downloads reached. Access self-revoked immediately (Burn-After-Reading)."
+                )
+
     # User is authorized: Record allowed access
     log_event(
         action='DOWNLOAD',
         status='ALLOWED',
         user=user,
         document=doc,
-        reason=reason
+        reason=f"{reason}{quota_note}"
     )
     
     storage_dir = current_app.config['VAULT_STORAGE_DIR']
